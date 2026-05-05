@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "WhisperBox"
+version = "1.0.0"
+id = "artifacts/whisperbox"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19647
+
+[services.development]
+run = "pnpm --filter @workspace/whisperbox run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/whisperbox", "run", "build" ]
+publicDir = "artifacts/whisperbox/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19647"
+BASE_PATH = "/"
