@@ -46,6 +46,7 @@ export function ChatScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [wsOnline, setWsOnline] = useState(false);
+  const [unread, setUnread] = useState<Record<string, number>>({});
   const [sending, setSending] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
@@ -124,7 +125,12 @@ export function ChatScreen() {
     if (!privateKey || !user) return;
     const fromMe = msg.from_user_id === user.id;
     const peer = fromMe ? msg.to_user_id : msg.from_user_id;
-    if (activePeerRef.current?.id !== peer) return; // we'll fetch when the user opens it
+    if (activePeerRef.current?.id !== peer) {
+      if (!fromMe) {
+        setUnread((u) => ({ ...u, [peer]: (u[peer] ?? 0) + 1 }));
+      }
+      return; // we'll fetch when the user opens it
+    }
     let text: string | null = null;
     try {
       text = await decryptMessage(msg.payload, privateKey, fromMe);
@@ -142,6 +148,11 @@ export function ChatScreen() {
   const openPeer = async (peer: { id: string; display_name: string; username: string }) => {
     setActivePeer(peer);
     setMessages([]);
+    setUnread((u) => {
+      if (!u[peer.id]) return u;
+      const { [peer.id]: _, ...rest } = u;
+      return rest;
+    });
     setLoadingHistory(true);
     try {
       const history = await api.history(peer.id);
@@ -335,6 +346,11 @@ export function ChatScreen() {
                         @{item.username}
                       </div>
                     </div>
+                    {unread[item.id] > 0 && (
+                      <span className="ml-auto inline-flex min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                        {unread[item.id]}
+                      </span>
+                    )}
                   </button>
                 </li>
               ))}
