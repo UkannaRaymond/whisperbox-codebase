@@ -6,6 +6,12 @@ Built with React 19, TanStack Start, Vite 7, Tailwind v4, shadcn/ui, and the bro
 
 ---
 
+## Live URL
+
+https://whisperbox-codebase.lovable.app
+
+---
+
 ## Architecture
 
 ```
@@ -42,13 +48,14 @@ Built with React 19, TanStack Start, Vite 7, Tailwind v4, shadcn/ui, and the bro
 ```
 
 ### Frontend layers
-| File | Role |
-|---|---|
-| `src/lib/crypto.ts` | All Web Crypto primitives (key gen, wrap, encrypt, decrypt) |
-| `src/lib/api.ts` | Typed REST client + token management |
-| `src/lib/session.tsx` | React context for auth + in-memory keys |
-| `src/components/AuthScreen.tsx` | Register / login UI |
-| `src/components/ChatScreen.tsx` | Conversation list, message thread, WebSocket |
+
+| File                            | Role                                                        |
+| ------------------------------- | ----------------------------------------------------------- |
+| `src/lib/crypto.ts`             | All Web Crypto primitives (key gen, wrap, encrypt, decrypt) |
+| `src/lib/api.ts`                | Typed REST client + token management                        |
+| `src/lib/session.tsx`           | React context for auth + in-memory keys                     |
+| `src/components/AuthScreen.tsx` | Register / login UI                                         |
+| `src/components/ChatScreen.tsx` | Conversation list, message thread, WebSocket                |
 
 ---
 
@@ -57,6 +64,7 @@ Built with React 19, TanStack Start, Vite 7, Tailwind v4, shadcn/ui, and the bro
 **Hybrid scheme: AES-GCM for content, RSA-OAEP for key wrapping.**
 
 ### Sending
+
 1. Generate a fresh 256-bit AES-GCM key `K` (one per message).
 2. Generate a 96-bit IV.
 3. `ciphertext = AES-GCM(K, IV, plaintext)`.
@@ -65,6 +73,7 @@ Built with React 19, TanStack Start, Vite 7, Tailwind v4, shadcn/ui, and the bro
 6. Send `{ ciphertext, iv, encryptedKey, encryptedKeyForSelf }` to the server.
 
 ### Receiving
+
 1. Pull the payload (history endpoint or WebSocket).
 2. Decide which wrapped key to use: `encryptedKeyForSelf` if `from_user_id === me`, else `encryptedKey`.
 3. `K = RSA-OAEP-decrypt(my_private_key, wrappedKey)`.
@@ -76,14 +85,14 @@ A new `K` is generated per message — compromise of one message key never affec
 
 ## Key management
 
-| Key | Where it lives | How it's protected |
-|---|---|---|
-| **RSA-2048 keypair** | Generated client-side at registration | Public key uploaded; private key never leaves the device unwrapped |
-| **PBKDF2 wrapping key** | Derived from password | 250,000 iterations, SHA-256, random 16-byte salt |
-| **Wrapped private key** | Stored on server | AES-GCM-256 with 12-byte IV prepended; key derived from password — server can't unwrap |
-| **AES-GCM message key** | Generated per message, in memory only | Wrapped with RSA-OAEP for each recipient |
-| **Access / refresh JWT** | `localStorage` (refresh) + RAM (access) | Auto-refresh 60 s before expiry |
-| **Unwrapped private key** | RAM only (`SessionProvider`) | Lost on reload — user must re-enter password |
+| Key                       | Where it lives                          | How it's protected                                                                     |
+| ------------------------- | --------------------------------------- | -------------------------------------------------------------------------------------- |
+| **RSA-2048 keypair**      | Generated client-side at registration   | Public key uploaded; private key never leaves the device unwrapped                     |
+| **PBKDF2 wrapping key**   | Derived from password                   | 250,000 iterations, SHA-256, random 16-byte salt                                       |
+| **Wrapped private key**   | Stored on server                        | AES-GCM-256 with 12-byte IV prepended; key derived from password — server can't unwrap |
+| **AES-GCM message key**   | Generated per message, in memory only   | Wrapped with RSA-OAEP for each recipient                                               |
+| **Access / refresh JWT**  | `localStorage` (refresh) + RAM (access) | Auto-refresh 60 s before expiry                                                        |
+| **Unwrapped private key** | RAM only (`SessionProvider`)            | Lost on reload — user must re-enter password                                           |
 
 The backend stores `public_key`, `wrapped_private_key`, and `pbkdf2_salt`, but cannot derive the wrapping key without the password.
 
@@ -134,6 +143,7 @@ This project uses TanStack Start v1 + Vite. The default template targets Cloudfl
    npm install -D @vercel/node
    ```
 2. **Edit `vite.config.ts`** — replace the `cloudflare()` plugin with TanStack's Vercel target. Minimal example:
+
    ```ts
    import { defineConfig } from "vite";
    import { tanstackStart } from "@tanstack/react-start/plugin/vite";
@@ -141,13 +151,10 @@ This project uses TanStack Start v1 + Vite. The default template targets Cloudfl
    import tailwindcss from "@tailwindcss/vite";
 
    export default defineConfig({
-     plugins: [
-       tsconfigPaths(),
-       tailwindcss(),
-       tanstackStart({ target: "vercel" }),
-     ],
+     plugins: [tsconfigPaths(), tailwindcss(), tanstackStart({ target: "vercel" })],
    });
    ```
+
    Remove `@cloudflare/vite-plugin` and `wrangler.jsonc` if you don't plan to use Cloudflare anymore.
 
 3. **Commit and push** to a GitHub/GitLab/Bitbucket repo.
@@ -155,6 +162,7 @@ This project uses TanStack Start v1 + Vite. The default template targets Cloudfl
 ### Deploy
 
 **Option A — Vercel dashboard (easiest):**
+
 1. Go to <https://vercel.com/new>.
 2. Import your repo.
 3. Framework preset: **Other** (Vercel auto-detects Vite).
@@ -163,6 +171,7 @@ This project uses TanStack Start v1 + Vite. The default template targets Cloudfl
 6. Click **Deploy**.
 
 **Option B — Vercel CLI:**
+
 ```bash
 npm i -g vercel
 vercel login
@@ -171,7 +180,9 @@ vercel --prod # production
 ```
 
 ### Environment variables
+
 The frontend hard-codes `https://whisperbox.koyeb.app` in `src/lib/api.ts`. To make it configurable on Vercel:
+
 1. Replace the constant with `import.meta.env.VITE_API_BASE`.
 2. In Vercel → **Project Settings → Environment Variables**, add `VITE_API_BASE=https://whisperbox.koyeb.app` for Production / Preview / Development.
 3. Redeploy.
