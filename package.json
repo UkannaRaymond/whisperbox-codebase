@@ -1,5 +1,5 @@
 {
-  "name": "tanstack_start_ts",
+  "name": "whisperbox-e2ee-messaging-app",
   "private": true,
   "sideEffects": false,
   "type": "module",
@@ -9,7 +9,8 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "build:vercel": "node scripts/build-vercel.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
