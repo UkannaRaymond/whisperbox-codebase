@@ -1,35 +1,38 @@
 import { cpSync, mkdirSync, writeFileSync, rmSync } from 'fs';
 import { execSync } from 'child_process';
 
-// 1. Run Vite build
+// 1. Vite build
 console.log('[vercel-build] 1/4 Running vite build...');
 execSync('npm run build', { stdio: 'inherit' });
 
-// 2. Prepare output directory
-console.log('[vercel-build] 2/4 Preparing .vercel/output...');
+// 2. Clean and prepare .vercel/output
+console.log('[vercel-build] 2/4 Preparing output directory...');
 const out = '.vercel/output';
 rmSync(out, { recursive: true, force: true });
 mkdirSync(`${out}/static`, { recursive: true });
 mkdirSync(`${out}/functions/index.func`, { recursive: true });
 
-// 3. Copy static client assets
+// 3. Static assets
 cpSync('dist/client', `${out}/static`, { recursive: true });
 
-// 4. Bundle the SSR server + all its node_modules into one file
+// 4. Bundle SSR server as CJS (react uses CJS require internally;
+//    package.json "type":"module" means .cjs extension is needed)
 console.log('[vercel-build] 3/4 Bundling SSR server...');
 execSync(
   `npx esbuild dist/server/server.js \
     --bundle \
     --platform=node \
     --target=node20 \
-    --format=esm \
-    --outfile=${out}/functions/index.func/server-bundle.js`,
+    --format=cjs \
+    --outfile=${out}/functions/index.func/server-bundle.cjs`,
   { stdio: 'inherit' }
 );
 
-// 5. Write the Vercel function handler
+// 5. Handler: load CJS bundle via createRequire (compatible with "type":"module")
 writeFileSync(`${out}/functions/index.func/index.js`, `
-import { server } from './server-bundle.js';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const { default: server } = require('./server-bundle.cjs');
 
 export default async function handler(req, res) {
   const proto = req.headers['x-forwarded-proto'] || 'https';
@@ -67,7 +70,7 @@ writeFileSync(`${out}/functions/index.func/.vc-config.json`, JSON.stringify({
   shouldAddHelpers: true,
 }, null, 2));
 
-// 7. Vercel routing: static files first, everything else → SSR function
+// 7. Routing: static files first, everything else to SSR function
 writeFileSync(`${out}/config.json`, JSON.stringify({
   version: 3,
   routes: [
@@ -76,4 +79,4 @@ writeFileSync(`${out}/config.json`, JSON.stringify({
   ],
 }, null, 2));
 
-console.log('[vercel-build] 4/4 Done. .vercel/output is ready.');
+console.log('[vercel-build] 4/4 Done.');
